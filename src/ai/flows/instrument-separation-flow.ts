@@ -102,6 +102,13 @@ const separateInstrumentsFlow = ai.defineFlow(
             throw new Error('Nenhuma faixa de áudio foi retornada pelo modelo.');
         }
 
+        const nameMapping: { [key: string]: string } = {
+            drums: 'Bateria',
+            bass: 'Baixo',
+            guitar: 'Guitarra',
+            vocals: 'Vocal',
+        };
+
         const tracks = await Promise.all(mediaParts.map(async (part, index) => {
             const defaultNames = ['Bateria', 'Baixo', 'Guitarra', 'Vocal'];
             if (part.media && part.media.url) {
@@ -110,27 +117,17 @@ const separateInstrumentsFlow = ai.defineFlow(
                     'base64'
                 );
                 const wavBase64 = await toWav(audioBuffer);
+                const stemName = part.media.stemName?.toLowerCase() || '';
+                
                 return {
-                    name: part.media.stemName || defaultNames[index] || `Instrumento ${index + 1}`,
+                    name: nameMapping[stemName] || defaultNames[index] || `Instrumento ${index + 1}`,
                     audioDataUri: `data:audio/wav;base64,${wavBase64}`,
                 };
             }
             throw new Error('Parte de mídia inválida recebida.');
         }));
 
-        const nameMapping: { [key: string]: string } = {
-          drums: 'Bateria',
-          bass: 'Baixo',
-          guitar: 'Guitarra',
-          vocals: 'Vocal',
-        };
-      
-        const mappedTracks = tracks.map(track => ({
-          ...track,
-          name: nameMapping[track.name.toLowerCase()] || track.name,
-        }));
-
-        return { tracks: mappedTracks };
+        return { tracks };
     }
   );
 
