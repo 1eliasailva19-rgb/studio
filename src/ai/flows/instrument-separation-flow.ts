@@ -74,14 +74,14 @@ const separateInstrumentsFlow = ai.defineFlow(
             `,
             config: {
                 responseModalities: ['AUDIO'],
-                audioConfig: {
-                    stemConfigs: [
-                        {stemName: "drums"},
-                        {stemName: "bass"},
-                        {stemName: "guitar"},
-                        {stemName: "vocals"},
-                    ]
-                }
+            },
+            audioConfig: {
+                stemConfigs: [
+                    {stemName: "drums"},
+                    {stemName: "bass"},
+                    {stemName: "guitar"},
+                    {stemName: "vocals"},
+                ]
             }
         });
 
