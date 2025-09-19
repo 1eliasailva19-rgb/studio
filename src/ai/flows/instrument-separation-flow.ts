@@ -66,7 +66,7 @@ const separateInstrumentsFlow = ai.defineFlow(
     },
     async (input) => {
         let { operation } = await ai.generate({
-            model: 'googleai/gemini-2.5-flash-preview-audio',
+            model: 'googleai/gemini-2.5-flash-audio-preview',
             prompt: `
                 Você é um engenheiro de áudio especialista. 
                 Separe a faixa de áudio fornecida em quatro stems: bateria, baixo, guitarra e vocais.
