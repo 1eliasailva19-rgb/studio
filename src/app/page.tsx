@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from 'react';
-import { Music, Upload, Loader2, Save, FolderDown, Check } from 'lucide-react';
+import { Music, Upload, Loader2, Save, FolderDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,9 @@ type InstrumentTrack = {
   data: string | null;
   selected: boolean;
 };
+
+// Simple silent WAV file data URI for placeholder
+const silentWavDataUri = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhIAAAAAAAAAA=";
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -49,10 +52,10 @@ export default function Home() {
     setTimeout(() => {
       // This is mock data. A real implementation would call an AI service.
       const mockTracks: InstrumentTrack[] = [
-        { id: 1, name: 'Bateria', data: '#', selected: false },
-        { id: 2, name: 'Baixo', data: '#', selected: false },
-        { id: 3, name: 'Guitarra', data: '#', selected: false },
-        { id: 4, name: 'Vocal', data: '#', selected: false },
+        { id: 1, name: 'Bateria', data: silentWavDataUri, selected: false },
+        { id: 2, name: 'Baixo', data: silentWavDataUri, selected: false },
+        { id: 3, name: 'Guitarra', data: silentWavDataUri, selected: false },
+        { id: 4, name: 'Vocal', data: silentWavDataUri, selected: false },
       ];
       setSeparatedTracks(mockTracks);
       setIsProcessing(false);
@@ -82,8 +85,8 @@ export default function Home() {
   };
 
   const handleSaveSelected = () => {
-    const selected = separatedTracks.filter(track => track.selected);
-    if (selected.length === 0) {
+    const selectedTracks = separatedTracks.filter(track => track.selected);
+    if (selectedTracks.length === 0) {
       toast({
         variant: "destructive",
         title: "Nenhuma faixa selecionada",
@@ -92,12 +95,21 @@ export default function Home() {
       return;
     }
 
-    // Placeholder for save logic
-    toast({
-      title: "Salvando faixas...",
-      description: `Salvando ${selected.map(t => t.name).join(', ')}.`,
+    selectedTracks.forEach(track => {
+      if (track.data) {
+        const link = document.createElement('a');
+        link.href = track.data;
+        link.download = `${track.name}.wav`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
     });
-    console.log("Saving selected tracks:", selected);
+
+    toast({
+      title: "Download iniciado",
+      description: `Salvando ${selectedTracks.map(t => t.name).join(', ')}.`,
+    });
   };
 
   const allTracksSelected = separatedTracks.length > 0 && separatedTracks.every(track => track.selected);
