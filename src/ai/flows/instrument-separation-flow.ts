@@ -67,11 +67,13 @@ const separateInstrumentsFlow = ai.defineFlow(
     async (input) => {
         let { operation } = await ai.generate({
             model: 'googleai/gemini-2.5-flash-audio-preview',
-            prompt: `
-                Você é um engenheiro de áudio especialista. 
-                Separe a faixa de áudio fornecida em quatro stems: bateria, baixo, guitarra e vocais.
-                Áudio: {{media url=audioDataUri}}
-            `,
+            prompt: [
+                {text: `
+                    Você é um engenheiro de áudio especialista. 
+                    Separe a faixa de áudio fornecida em quatro stems: bateria, baixo, guitarra e vocais.
+                `},
+                {media: {url: input.audioDataUri}}
+            ],
             config: {
                 responseModalities: ['AUDIO'],
             },
