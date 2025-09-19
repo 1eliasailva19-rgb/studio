@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { separateInstruments, InstrumentSeparationOutput } from '@/ai/flows/instrument-separation-flow';
 
 type InstrumentTrack = {
   id: number;
@@ -16,8 +17,18 @@ type InstrumentTrack = {
   selected: boolean;
 };
 
-// Simple silent WAV file data URI for placeholder
-const silentWavDataUri = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAAABkYXRhIAAAAAAAAAA=";
+// Helper function to convert a File to a Data URI
+const fileToDataUri = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(reader.result as string);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 
 export default function Home() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -30,6 +41,14 @@ export default function Home() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) { // 10 MB limit
+        toast({
+          variant: "destructive",
+          title: "Arquivo muito grande",
+          description: "Por favor, selecione um arquivo de áudio com menos de 10MB.",
+        });
+        return;
+      }
       setSelectedFile(file);
       setSeparatedTracks([]);
     }
@@ -48,22 +67,35 @@ export default function Home() {
     setIsProcessing(true);
     setSeparatedTracks([]);
 
-    // Simulate AI processing
-    setTimeout(() => {
-      // This is mock data. A real implementation would call an AI service.
-      const mockTracks: InstrumentTrack[] = [
-        { id: 1, name: 'Bateria', data: silentWavDataUri, selected: false },
-        { id: 2, name: 'Baixo', data: silentWavDataUri, selected: false },
-        { id: 3, name: 'Guitarra', data: silentWavDataUri, selected: false },
-        { id: 4, name: 'Vocal', data: silentWavDataUri, selected: false },
-      ];
-      setSeparatedTracks(mockTracks);
-      setIsProcessing(false);
+    try {
+      const audioDataUri = await fileToDataUri(selectedFile);
+      
+      const result: InstrumentSeparationOutput = await separateInstruments({
+        audioDataUri: audioDataUri,
+      });
+
+      const processedTracks: InstrumentTrack[] = result.tracks.map((track, index) => ({
+        id: index + 1,
+        name: track.name,
+        data: track.audioDataUri,
+        selected: false,
+      }));
+
+      setSeparatedTracks(processedTracks);
       toast({
         title: "Processamento Concluído",
         description: "Os instrumentos foram separados.",
       });
-    }, 3000);
+    } catch (error) {
+      console.error("Error processing music:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro no Processamento",
+        description: "Ocorreu um erro ao separar os instrumentos. Por favor, tente novamente.",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleUploadClick = () => {
@@ -113,7 +145,6 @@ export default function Home() {
   };
 
   const allTracksSelected = separatedTracks.length > 0 && separatedTracks.every(track => track.selected);
-  const someTracksSelected = separatedTracks.some(track => track.selected);
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col items-center p-4 sm:p-6 lg:p-8">
@@ -130,7 +161,7 @@ export default function Home() {
             <CardTitle className="flex items-center gap-2">
               <span className="text-xl">1. Carregar sua Música</span>
             </CardTitle>
-            <CardDescription>Selecione um arquivo de áudio do seu computador para iniciar o processo.</CardDescription>
+            <CardDescription>Selecione um arquivo de áudio (até 10MB) para iniciar o processo.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input
@@ -152,7 +183,7 @@ export default function Home() {
               ) : (
                 <Music className="mr-2 h-4 w-4 transition-transform duration-300 group-hover:scale-110" />
               )}
-              {isProcessing ? 'Processando...' : 'Separar Instrumentos'}
+              {isProcessing ? 'Processando... (pode levar um minuto)' : 'Separar Instrumentos'}
             </Button>
           </CardContent>
         </Card>
@@ -203,9 +234,9 @@ export default function Home() {
               </div>
             )}
           </CardContent>
-          {separatedTracks.length > 0 && (
+          {separatedTracks.length > 0 && !isProcessing && (
             <CardFooter>
-              <Button onClick={handleSaveSelected} disabled={!someTracksSelected} className="w-full">
+              <Button onClick={handleSaveSelected} disabled={!separatedTracks.some(t => t.selected)} className="w-full">
                 <Save className="mr-2 h-4 w-4" />
                 Salvar Selecionados
               </Button>
