@@ -49,7 +49,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!examFile || !symptoms.trim()) {
+    if (!examFile || !symptoms) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
@@ -113,7 +113,7 @@ export default function Home() {
                     disabled={isLoading}
                   />
                 </div>
-                <Button type="submit" disabled={isLoading || !examFile || !symptoms.trim()} className="w-full">
+                <Button type="submit" disabled={isLoading || !examFile || !symptoms} className="w-full">
                   {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Bot className="h-5 w-5 mr-2" /> Analisar Exame</>}
                 </Button>
               </form>
