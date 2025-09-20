@@ -48,6 +48,12 @@ export default function Home() {
   const startDrawing = (event: React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+
+    if ('touches' in event && event.touches.length > 1) {
+      setIsDrawing(false);
+      return;
+    }
+    
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
@@ -61,10 +67,17 @@ export default function Home() {
     if (!isDrawing) return;
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    
+    if ('touches' in event && event.touches.length > 1) {
+      setIsDrawing(false);
+      return;
+    }
     
     event.preventDefault(); // Prevent scrolling on touch devices
+    
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
     const { x, y } = getCoordinates(event, canvas);
     ctx.lineTo(x, y);
     ctx.stroke();
@@ -156,24 +169,23 @@ export default function Home() {
         const image = editorImageRef.current;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
-            ctx.lineWidth = Math.max(2, Math.min(image.naturalWidth, image.naturalHeight) * 0.005);
-            ctx.strokeStyle = 'red';
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            
-            // Redraw previous edits if they exist
-            if (editedDataUrl) {
-                const editedImage = new Image();
-                editedImage.onload = () => {
-                    ctx.drawImage(editedImage, 0, 0);
-                };
-                editedImage.src = editedDataUrl;
+            const setCanvasDimensions = () => {
+              canvas.width = image.naturalWidth;
+              canvas.height = image.naturalHeight;
+              ctx.lineWidth = Math.max(2, Math.min(image.naturalWidth, image.naturalHeight) * 0.005);
+              ctx.strokeStyle = 'red';
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+            }
+
+            if (image.complete) {
+              setCanvasDimensions();
+            } else {
+              image.onload = setCanvasDimensions;
             }
         }
     }
-  }, [isEditorOpen, editedDataUrl]);
+  }, [isEditorOpen]);
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
@@ -308,5 +320,7 @@ export default function Home() {
       </footer>
     </div>
   );
+
+    
 
     
