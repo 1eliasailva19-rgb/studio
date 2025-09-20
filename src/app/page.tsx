@@ -1,109 +1,76 @@
 "use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { Bot, Code, Loader2, Send, User } from 'lucide-react';
+import { useState } from 'react';
+import { Bot, FileUp, Loader2, Microscope, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { generateCodeStream } from '@/ai/flows/code-generator-flow';
-
-type Message = {
-  role: 'user' | 'assistant';
-  content: string;
-};
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { diagnoseExam, DiagnoseExamOutput } from '@/ai/flows/diagnose-exam-flow';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Home() {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [symptoms, setSymptoms] = useState('');
+  const [examFile, setExamFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<DiagnoseExamOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 4 * 1024 * 1024) { // Limite de 4MB
+        toast({
+          variant: "destructive",
+          title: "Arquivo muito grande",
+          description: "Por favor, selecione um arquivo de imagem com menos de 4MB.",
+        });
+        return;
+      }
+      setExamFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-  
-  // Enviar a mensagem inicial do assistente quando o componente carregar
-  useEffect(() => {
-    const sendInitialMessage = async () => {
-      setIsLoading(true);
-      try {
-        const stream = await generateCodeStream("Apresente-se", true);
-        let assistantResponse = '';
-        
-        setMessages([{ role: 'assistant', content: '' }]);
+  const fileToDataUri = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
-        const reader = stream.getReader();
-        const decoder = new TextDecoder();
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const chunk = decoder.decode(value, { stream: true });
-          assistantResponse += chunk;
-          setMessages([{ role: 'assistant', content: assistantResponse }]);
-        }
-      } catch (error) {
-        console.error("Error generating initial message:", error);
-        setMessages([{
-          role: 'assistant',
-          content: "Olá! Como posso ajudar você hoje?",
-        }]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    sendInitialMessage();
-  }, []);
-
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim()) return;
+    if (!examFile || !symptoms.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Por favor, envie uma imagem do exame e descreva seus sintomas.",
+      });
+      return;
+    }
 
-    const userMessage: Message = { role: 'user', content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
     setIsLoading(true);
+    setAnalysisResult(null);
 
     try {
-      // Passa `false` porque não é a primeira mensagem
-      const stream = await generateCodeStream(input, false);
-      let assistantResponse = '';
-
-      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
-      
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        const chunk = decoder.decode(value, { stream: true });
-        assistantResponse += chunk;
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].content = assistantResponse;
-          return newMessages;
-        });
-      }
+      const examPhotoDataUri = await fileToDataUri(examFile);
+      const result = await diagnoseExam({ examPhotoDataUri, symptoms });
+      setAnalysisResult(result);
     } catch (error) {
-      console.error("Error generating code:", error);
-      const errorMessage: Message = {
-        role: 'assistant',
-        content: "Desculpe, ocorreu um erro ao gerar a resposta. Por favor, tente novamente.",
-      };
-      setMessages((prev) => {
-        const newMessages = [...prev];
-        if (newMessages[newMessages.length -1].role === 'assistant' && newMessages[newMessages.length -1].content === '') {
-          newMessages[newMessages.length-1] = errorMessage;
-          return newMessages;
-        }
-        return [...newMessages, errorMessage]
+      console.error("Erro ao analisar o exame:", error);
+      toast({
+        variant: "destructive",
+        title: "Erro na Análise",
+        description: "Não foi possível processar a análise. Por favor, tente novamente.",
       });
     } finally {
       setIsLoading(false);
@@ -111,55 +78,84 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
+    <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="p-4 border-b flex items-center justify-center">
-        <Bot className="h-6 w-6 text-primary" />
-        <h1 className="text-xl font-bold ml-2">AI App Builder</h1>
+        <Microscope className="h-6 w-6 text-primary" />
+        <h1 className="text-xl font-bold ml-2">Assistente de Diagnóstico Médico com IA</h1>
       </header>
 
-      <main className="flex-1 overflow-y-auto p-4">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {messages.map((msg, index) => (
-            <Card key={index} className={msg.role === 'user' ? 'bg-muted/50' : 'bg-card'}>
-              <CardHeader className="flex flex-row items-center gap-3 pb-2">
-                {msg.role === 'user' ? (
-                  <User className="h-5 w-5 text-accent" />
-                ) : (
-                  <Bot className="h-5 w-5 text-primary" />
-                )}
-                <CardTitle className="text-lg font-medium">
-                  {msg.role === 'user' ? 'Você' : 'AI Assistant'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {msg.content.includes('```tsx') ? (
-                  <pre className="bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap">
-                    <code className="text-sm font-mono">{msg.content.replace(/```tsx|```/g, '').trim()}</code>
-                  </pre>
-                ) : (
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-          <div ref={messagesEndRef} />
+      <main className="flex-1 p-4 md:p-6">
+        <div className="max-w-4xl mx-auto grid md:grid-cols-2 gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações do Paciente</CardTitle>
+              <CardDescription>Envie seu exame e descreva seus sintomas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="space-y-2">
+                  <label htmlFor="exam-file" className="font-medium">Exame Médico (Imagem)</label>
+                  <Input id="exam-file" type="file" accept="image/*" onChange={handleFileChange} className="file:text-primary-foreground" />
+                  {previewUrl && (
+                    <div className="mt-4">
+                      <img src={previewUrl} alt="Pré-visualização do Exame" className="rounded-md max-h-60 w-auto mx-auto" />
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <label htmlFor="symptoms" className="font-medium">Sintomas</label>
+                  <Textarea
+                    id="symptoms"
+                    placeholder="Ex: Tenho sentido dores de cabeça frequentes e tontura..."
+                    value={symptoms}
+                    onChange={(e) => setSymptoms(e.target.value)}
+                    rows={5}
+                    disabled={isLoading}
+                  />
+                </div>
+                <Button type="submit" disabled={isLoading || !examFile || !symptoms.trim()} className="w-full">
+                  {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Bot className="h-5 w-5 mr-2" /> Analisar Exame</>}
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <div className="flex items-center justify-center">
+            {isLoading && (
+              <div className="text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+                <p className="mt-4 text-muted-foreground">Analisando... Isso pode levar alguns instantes.</p>
+              </div>
+            )}
+            {analysisResult && (
+              <Card className="w-full">
+                <CardHeader>
+                  <CardTitle>Resultado da Análise</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="whitespace-pre-wrap">{analysisResult.analysis}</p>
+                  <Alert variant="destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Atenção</AlertTitle>
+                    <AlertDescription>
+                      {analysisResult.disclaimer}
+                    </AlertDescription>
+                  </Alert>
+                </CardContent>
+              </Card>
+            )}
+            {!isLoading && !analysisResult && (
+              <div className="text-center text-muted-foreground">
+                <Microscope className="h-16 w-16 mx-auto" />
+                <p className="mt-4">Os resultados da análise aparecerão aqui.</p>
+              </div>
+            )}
+          </div>
         </div>
       </main>
 
-      <footer className="p-4 border-t bg-background">
-        <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Descreva o componente que você quer criar..."
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button type="submit" disabled={isLoading || !input.trim()}>
-            {isLoading && messages.length > 1 ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            <span className="sr-only">Enviar</span>
-          </Button>
-        </form>
+      <footer className="p-4 border-t text-center text-sm text-muted-foreground">
+        <p>Criado por JOSÉ WELINSON BEZERRA DA SILVA</p>
       </footer>
     </div>
   );
