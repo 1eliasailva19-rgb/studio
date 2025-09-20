@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Separador de Instrumentos AI',
-  description: 'Carregue uma música e separe os instrumentos usando IA',
+  title: 'AI App Builder',
+  description: 'Crie componentes de aplicativos usando o poder da IA',
 };
 
 export default function RootLayout({
