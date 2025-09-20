@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Um fluxo de IA para analisar exames médicos ou fotos de problemas de saúde.
@@ -14,7 +15,7 @@ const DiagnoseExamInputSchema = z.object({
   examPhotoDataUri: z
     .string()
     .describe(
-      "Uma foto de um exame médico ou do problema de saúde, como um URI de dados que deve incluir um tipo MIME e usar codificação Base64. Formato esperado: 'data:<mimetype>;base64,<dados_codificados>'."
+      "Uma foto de um exame médico ou do problema de saúde, como um URI de dados que deve incluir um tipo MIME e usar codificação Base64. A imagem pode conter marcações em vermelho para destacar áreas de interesse. Formato esperado: 'data:<mimetype>;base64,<dados_codificados>'."
     ),
   symptoms: z.string().describe('A descrição dos sintomas do paciente.'),
 });
@@ -35,6 +36,8 @@ const prompt = ai.definePrompt({
   input: {schema: DiagnoseExamInputSchema},
   output: {schema: DiagnoseExamOutputSchema},
   prompt: `Você é um assistente médico de IA altamente qualificado. Sua tarefa é analisar a imagem do exame médico ou do problema de saúde e a descrição dos sintomas fornecida pelo paciente.
+
+A imagem pode conter marcações em vermelho feitas pelo usuário para destacar áreas de preocupação. Preste atenção especial a essas marcações em sua análise.
 
 Forneça uma análise detalhada e informativa com base nos dados.
 
@@ -77,3 +80,5 @@ const diagnoseExamFlow = ai.defineFlow(
     return output!;
   }
 );
+
+    
