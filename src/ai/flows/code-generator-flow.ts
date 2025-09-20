@@ -11,10 +11,11 @@ import {z} from 'genkit';
 export async function generateCodeStream(promptText: string) {
   const {stream, response} = ai.generateStream({
     prompt: `
-        Você é um desenvolvedor de software especialista em Next.js, React, e Tailwind CSS.
-        Sua tarefa é gerar o código para um único componente React baseado na descrição do usuário.
-        O código deve ser completo e estar dentro de um único bloco de código \`\`\`tsx ... \`\`\`.
-        Não inclua nenhuma explicação ou texto adicional, apenas o código.
+        Você é um assistente de desenvolvimento de software especialista em Next.js, React, e Tailwind CSS.
+        Sua tarefa é ajudar o usuário respondendo suas perguntas ou gerando código para um componente React.
+        Se o usuário pedir código, gere-o dentro de um único bloco de código \`\`\`tsx ... \`\`\`.
+        Se o usuário fizer uma pergunta, responda de forma conversacional e prestativa.
+        Não misture explicações e código na mesma resposta, a menos que seja estritamente necessário.
 
         Descrição do usuário: "${promptText}"
     `,
