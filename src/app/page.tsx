@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { Bot, FileUp, Loader2, Microscope, AlertTriangle } from 'lucide-react';
+import { Bot, Loader2, Microscope, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -53,7 +53,7 @@ export default function Home() {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, envie uma imagem do exame e descreva seus sintomas.",
+        description: "Por favor, envie uma imagem e descreva seus sintomas.",
       });
       return;
     }
@@ -89,16 +89,16 @@ export default function Home() {
           <Card>
             <CardHeader>
               <CardTitle>Informações do Paciente</CardTitle>
-              <CardDescription>Envie seu exame e descreva seus sintomas</CardDescription>
+              <CardDescription>Envie uma foto do seu exame ou do problema e descreva seus sintomas</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
-                  <label htmlFor="exam-file" className="font-medium">Exame Médico (Imagem)</label>
+                  <label htmlFor="exam-file" className="font-medium">Exame ou Foto do Problema</label>
                   <Input id="exam-file" type="file" accept="image/*" onChange={handleFileChange} className="file:text-primary-foreground" />
                   {previewUrl && (
                     <div className="mt-4">
-                      <img src={previewUrl} alt="Pré-visualização do Exame" className="rounded-md max-h-60 w-auto mx-auto" />
+                      <img src={previewUrl} alt="Pré-visualização" className="rounded-md max-h-60 w-auto mx-auto" />
                     </div>
                   )}
                 </div>
@@ -114,7 +114,7 @@ export default function Home() {
                   />
                 </div>
                 <Button type="submit" disabled={isLoading || !examFile || !symptoms} className="w-full">
-                  {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Bot className="h-5 w-5 mr-2" /> Analisar Exame</>}
+                  {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Bot className="h-5 w-5 mr-2" /> Analisar</>}
                 </Button>
               </form>
             </CardContent>

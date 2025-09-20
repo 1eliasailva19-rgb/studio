@@ -1,8 +1,8 @@
 'use server';
 /**
- * @fileOverview Um fluxo de IA para analisar exames médicos.
+ * @fileOverview Um fluxo de IA para analisar exames médicos ou fotos de problemas de saúde.
  *
- * - diagnoseExam - Uma função que lida com o processo de análise de exames.
+ * - diagnoseExam - Uma função que lida com o processo de análise.
  * - DiagnoseExamInput - O tipo de entrada para a função diagnoseExam.
  * - DiagnoseExamOutput - O tipo de retorno para a função diagnoseExam.
  */
@@ -14,14 +14,14 @@ const DiagnoseExamInputSchema = z.object({
   examPhotoDataUri: z
     .string()
     .describe(
-      "Uma foto de um exame médico, como um URI de dados que deve incluir um tipo MIME e usar codificação Base64. Formato esperado: 'data:<mimetype>;base64,<dados_codificados>'."
+      "Uma foto de um exame médico ou do problema de saúde, como um URI de dados que deve incluir um tipo MIME e usar codificação Base64. Formato esperado: 'data:<mimetype>;base64,<dados_codificados>'."
     ),
   symptoms: z.string().describe('A descrição dos sintomas do paciente.'),
 });
 export type DiagnoseExamInput = z.infer<typeof DiagnoseExamInputSchema>;
 
 const DiagnoseExamOutputSchema = z.object({
-  analysis: z.string().describe('A análise detalhada do exame e dos sintomas fornecidos.'),
+  analysis: z.string().describe('A análise detalhada da imagem e dos sintomas fornecidos.'),
   disclaimer: z.string().describe('Um aviso de que a análise da IA não substitui uma consulta médica profissional.'),
 });
 export type DiagnoseExamOutput = z.infer<typeof DiagnoseExamOutputSchema>;
@@ -34,7 +34,7 @@ const prompt = ai.definePrompt({
   name: 'diagnoseExamPrompt',
   input: {schema: DiagnoseExamInputSchema},
   output: {schema: DiagnoseExamOutputSchema},
-  prompt: `Você é um assistente médico de IA altamente qualificado. Sua tarefa é analisar a imagem do exame médico e a descrição dos sintomas fornecida pelo paciente.
+  prompt: `Você é um assistente médico de IA altamente qualificado. Sua tarefa é analisar a imagem do exame médico ou do problema de saúde e a descrição dos sintomas fornecida pelo paciente.
 
 Forneça uma análise detalhada e informativa com base nos dados.
 
@@ -43,7 +43,7 @@ Forneça uma análise detalhada e informativa com base nos dados.
 Use as seguintes informações:
 
 Descrição dos Sintomas: {{{symptoms}}}
-Foto do Exame: {{media url=examPhotoDataUri}}`,
+Foto: {{media url=examPhotoDataUri}}`,
 });
 
 const diagnoseExamFlow = ai.defineFlow(
