@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bot, Code, Loader2, Send, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { generateCode } from '@/ai/flows/code-generator-flow';
+import { generateCodeStream } from '@/ai/flows/code-generator-flow';
 
 type Message = {
   role: 'user' | 'assistant';
@@ -16,6 +16,15 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,12 +36,26 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const assistantResponse = await generateCode(input);
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: assistantResponse,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
+      const stream = await generateCodeStream(input);
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+      let assistantResponse = '';
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        const chunk = decoder.decode(value, { stream: true });
+        assistantResponse += chunk;
+        setMessages((prev) => {
+          const newMessages = [...prev];
+          newMessages[newMessages.length - 1].content = assistantResponse;
+          return newMessages;
+        });
+      }
     } catch (error) {
       console.error("Error generating code:", error);
       const errorMessage: Message = {
@@ -68,8 +91,8 @@ export default function Home() {
               </CardHeader>
               <CardContent>
                 {msg.role === 'assistant' ? (
-                  <pre className="bg-muted p-4 rounded-md overflow-x-auto">
-                    <code className="text-sm font-mono">{msg.content}</code>
+                  <pre className="bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap">
+                    <code className="text-sm font-mono">{msg.content.replace(/```tsx|```/g, '').trim()}</code>
                   </pre>
                 ) : (
                   <p>{msg.content}</p>
@@ -77,11 +100,7 @@ export default function Home() {
               </CardContent>
             </Card>
           ))}
-           {isLoading && (
-              <div className="flex justify-center items-center">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            )}
+          <div ref={messagesEndRef} />
         </div>
       </main>
 
