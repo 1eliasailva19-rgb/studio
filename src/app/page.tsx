@@ -37,19 +37,12 @@ export default function Home() {
 
     try {
       const stream = await generateCodeStream(input);
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
       let assistantResponse = '';
 
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-        const chunk = decoder.decode(value, { stream: true });
-        assistantResponse += chunk;
+      for await (const chunk of stream) {
+        assistantResponse += chunk.text;
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1].content = assistantResponse;
