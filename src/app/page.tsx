@@ -25,6 +25,39 @@ export default function Home() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+  
+  // Enviar a mensagem inicial do assistente quando o componente carregar
+  useEffect(() => {
+    const sendInitialMessage = async () => {
+      setIsLoading(true);
+      try {
+        const stream = await generateCodeStream("Apresente-se", true);
+        let assistantResponse = '';
+        
+        setMessages([{ role: 'assistant', content: '' }]);
+
+        const reader = stream.getReader();
+        const decoder = new TextDecoder();
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          assistantResponse += chunk;
+          setMessages([{ role: 'assistant', content: assistantResponse }]);
+        }
+      } catch (error) {
+        console.error("Error generating initial message:", error);
+        setMessages([{
+          role: 'assistant',
+          content: "Olá! Como posso ajudar você hoje?",
+        }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    sendInitialMessage();
+  }, []);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +69,8 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const stream = await generateCodeStream(input);
+      // Passa `false` porque não é a primeira mensagem
+      const stream = await generateCodeStream(input, false);
       let assistantResponse = '';
 
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
@@ -61,7 +95,7 @@ export default function Home() {
       console.error("Error generating code:", error);
       const errorMessage: Message = {
         role: 'assistant',
-        content: "Desculpe, ocorreu um erro ao gerar o código. Por favor, tente novamente.",
+        content: "Desculpe, ocorreu um erro ao gerar a resposta. Por favor, tente novamente.",
       };
       setMessages((prev) => {
         const newMessages = [...prev];
@@ -98,12 +132,12 @@ export default function Home() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {msg.role === 'assistant' ? (
+                {msg.content.includes('```tsx') ? (
                   <pre className="bg-muted p-4 rounded-md overflow-x-auto whitespace-pre-wrap">
                     <code className="text-sm font-mono">{msg.content.replace(/```tsx|```/g, '').trim()}</code>
                   </pre>
                 ) : (
-                  <p>{msg.content}</p>
+                  <p className="whitespace-pre-wrap">{msg.content}</p>
                 )}
               </CardContent>
             </Card>
@@ -122,7 +156,7 @@ export default function Home() {
             className="flex-1"
           />
           <Button type="submit" disabled={isLoading || !input.trim()}>
-            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {isLoading && messages.length > 1 ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             <span className="sr-only">Enviar</span>
           </Button>
         </form>

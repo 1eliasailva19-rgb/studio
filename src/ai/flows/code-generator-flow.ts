@@ -8,14 +8,25 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
-export async function generateCodeStream(promptText: string) {
+export async function generateCodeStream(promptText: string, isFirstMessage: boolean) {
+  let systemPrompt = `
+      Você é um assistente de desenvolvimento de software especialista em Next.js, React, e Tailwind CSS.
+      Sua tarefa é ajudar o usuário respondendo suas perguntas ou gerando código para um componente React.
+      
+      Regras importantes:
+      1. Se o usuário perguntar quem criou este aplicativo, responda EXATAMENTE: "Este aplicativo foi criado por JOSÉ WELINSON BEZERRA DA SILVA."
+      2. Se o usuário pedir código, gere-o dentro de um único bloco de código \`\`\`tsx ... \`\`\`.
+      3. Se o usuário fizer uma pergunta, responda de forma conversacional e prestativa.
+      4. Não misture explicações e código na mesma resposta, a menos que seja estritamente necessário.
+  `;
+
+  if (isFirstMessage) {
+    systemPrompt += `\n5. Comece sua primeira mensagem com uma saudação profissional, se apresentando como a IA criada por Welinson. Por exemplo: "Olá! Sou sua inteligência artificial, criada por Welinson. Como posso ajudar a construir algo incrível hoje?"`;
+  }
+
   const {stream, response} = ai.generateStream({
     prompt: `
-        Você é um assistente de desenvolvimento de software especialista em Next.js, React, e Tailwind CSS.
-        Sua tarefa é ajudar o usuário respondendo suas perguntas ou gerando código para um componente React.
-        Se o usuário pedir código, gere-o dentro de um único bloco de código \`\`\`tsx ... \`\`\`.
-        Se o usuário fizer uma pergunta, responda de forma conversacional e prestativa.
-        Não misture explicações e código na mesma resposta, a menos que seja estritamente necessário.
+        ${systemPrompt}
 
         Descrição do usuário: "${promptText}"
     `,
