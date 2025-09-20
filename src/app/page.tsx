@@ -2,52 +2,46 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Loader2, Microscope, AlertTriangle } from 'lucide-react';
+import { Bot, Loader2, Microscope, AlertTriangle, Upload, Pencil, Trash2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { diagnoseExam, DiagnoseExamOutput } from '@/ai/flows/diagnose-exam-flow';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 export default function Home() {
   const [symptoms, setSymptoms] = useState('');
   const [examFile, setExamFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [editedDataUrl, setEditedDataUrl] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<DiagnoseExamOutput | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isEditorOpen, setIsEditorOpen] = useState(false);
+  const [isDrawing, setIsDrawing] = useState(false);
   const { toast } = useToast();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (canvas && previewUrl && imageRef.current) {
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.lineWidth = 3;
-        ctx.strokeStyle = 'red';
-      }
-    }
-  }, [previewUrl]);
-
-  const getCoordinates = (event: React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+  const editorImageRef = useRef<HTMLImageElement>(null);
+  
+  const getCoordinates = (event: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+
     if ('touches' in event) {
       return {
-        x: event.touches[0].clientX - rect.left,
-        y: event.touches[0].clientY - rect.top
+        x: (event.touches[0].clientX - rect.left) * scaleX,
+        y: (event.touches[0].clientY - rect.top) * scaleY
       };
     }
     return {
-      x: event.clientX - rect.left,
-      y: event.clientY - rect.top
+      x: (event.clientX - rect.left) * scaleX,
+      y: (event.clientY - rect.top) * scaleY
     };
   };
 
@@ -58,7 +52,7 @@ export default function Home() {
     if (!ctx) return;
 
     setIsDrawing(true);
-    const { x, y } = getCoordinates(event);
+    const { x, y } = getCoordinates(event, canvas);
     ctx.beginPath();
     ctx.moveTo(x, y);
   };
@@ -69,8 +63,9 @@ export default function Home() {
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
-    const { x, y } = getCoordinates(event);
+    
+    event.preventDefault(); // Prevent scrolling on touch devices
+    const { x, y } = getCoordinates(event, canvas);
     ctx.lineTo(x, y);
     ctx.stroke();
   };
@@ -82,7 +77,7 @@ export default function Home() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 4 * 1024 * 1024) { // Limite de 4MB
+      if (file.size > 4 * 1024 * 1024) { // 4MB limit
         toast({
           variant: "destructive",
           title: "Arquivo muito grande",
@@ -91,6 +86,7 @@ export default function Home() {
         return;
       }
       setExamFile(file);
+      setEditedDataUrl(null);
       const reader = new FileReader();
       reader.onloadend = () => {
         setPreviewUrl(reader.result as string);
@@ -99,35 +95,30 @@ export default function Home() {
       reader.readAsDataURL(file);
     }
   };
-  
-  const getCombinedImageAsDataUri = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-        const canvas = canvasRef.current;
-        const image = imageRef.current;
 
-        if (!canvas || !image || !previewUrl) {
-            return reject(new Error("Elementos necessários não estão prontos."));
-        }
+  const handleSaveEdits = () => {
+    const canvas = canvasRef.current;
+    const image = editorImageRef.current;
 
-        const newCanvas = document.createElement('canvas');
-        newCanvas.width = image.naturalWidth;
-        newCanvas.height = image.naturalHeight;
-        const ctx = newCanvas.getContext('2d');
+    if (!canvas || !image || !previewUrl) return;
 
-        if (!ctx) {
-            return reject(new Error("Não foi possível obter o contexto do canvas."));
-        }
+    const newCanvas = document.createElement('canvas');
+    newCanvas.width = image.naturalWidth;
+    newCanvas.height = image.naturalHeight;
+    const ctx = newCanvas.getContext('2d');
+    if (!ctx) return;
+    
+    ctx.drawImage(image, 0, 0, newCanvas.width, newCanvas.height);
+    ctx.drawImage(canvas, 0, 0, newCanvas.width, newCanvas.height);
 
-        // Desenha a imagem original
-        ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight);
-
-        // Desenha as anotações do canvas de desenho
-        ctx.drawImage(canvas, 0, 0, image.naturalWidth, image.naturalHeight);
-
-        resolve(newCanvas.toDataURL(examFile?.type || 'image/jpeg'));
-    });
+    setEditedDataUrl(newCanvas.toDataURL(examFile?.type || 'image/jpeg'));
+    setIsEditorOpen(false);
   };
 
+  const handleClearEdits = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent opening the editor
+    setEditedDataUrl(null);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,7 +135,7 @@ export default function Home() {
     setAnalysisResult(null);
 
     try {
-      const examPhotoDataUri = await getCombinedImageAsDataUri();
+      const examPhotoDataUri = editedDataUrl || previewUrl!;
       const result = await diagnoseExam({ examPhotoDataUri, symptoms });
       setAnalysisResult(result);
     } catch (error) {
@@ -159,6 +150,31 @@ export default function Home() {
     }
   };
 
+  useEffect(() => {
+    if (isEditorOpen && canvasRef.current && editorImageRef.current) {
+        const canvas = canvasRef.current;
+        const image = editorImageRef.current;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            ctx.lineWidth = Math.max(2, Math.min(image.naturalWidth, image.naturalHeight) * 0.005);
+            ctx.strokeStyle = 'red';
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Redraw previous edits if they exist
+            if (editedDataUrl) {
+                const editedImage = new Image();
+                editedImage.onload = () => {
+                    ctx.drawImage(editedImage, 0, 0);
+                };
+                editedImage.src = editedDataUrl;
+            }
+        }
+    }
+  }, [isEditorOpen, editedDataUrl]);
+
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground">
       <header className="p-4 border-b flex items-center justify-center">
@@ -171,39 +187,39 @@ export default function Home() {
           <Card>
             <CardHeader>
               <CardTitle>Informações do Paciente</CardTitle>
-              <CardDescription>Envie uma foto do seu exame ou do problema e descreva seus sintomas. Use o mouse para circular ou marcar a área de interesse na imagem.</CardDescription>
+              <CardDescription>Envie uma foto do seu exame ou problema e descreva os sintomas.</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="exam-file" className="font-medium">Exame ou Foto do Problema</label>
-                  <Input id="exam-file" type="file" accept="image/*" onChange={handleFileChange} className="file:text-primary-foreground" />
-                  {previewUrl && (
-                    <div className="mt-4 relative mx-auto w-full max-w-md">
+                  {!previewUrl ? (
+                     <label htmlFor="exam-file" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
+                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Clique para enviar</span> ou arraste e solte</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG, WEBP (MAX. 4MB)</p>
+                        </div>
+                        <Input id="exam-file" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
+                    </label>
+                  ) : (
+                    <div className="mt-4 relative mx-auto w-full max-w-md group">
                       <img 
                         ref={imageRef} 
-                        src={previewUrl} 
+                        src={editedDataUrl || previewUrl} 
                         alt="Pré-visualização" 
-                        className="rounded-md w-full h-auto"
-                        onLoad={(e) => {
-                          const img = e.currentTarget;
-                          if (canvasRef.current) {
-                            canvasRef.current.width = img.clientWidth;
-                            canvasRef.current.height = img.clientHeight;
-                          }
-                        }}
+                        className="rounded-md w-full h-auto cursor-pointer"
+                        onClick={() => setIsEditorOpen(true)}
                       />
-                      <canvas
-                        ref={canvasRef}
-                        className="absolute top-0 left-0 w-full h-full rounded-md cursor-crosshair"
-                        onMouseDown={startDrawing}
-                        onMouseMove={draw}
-                        onMouseUp={stopDrawing}
-                        onMouseLeave={stopDrawing}
-                        onTouchStart={startDrawing}
-                        onTouchMove={draw}
-                        onTouchEnd={stopDrawing}
-                      />
+                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md" onClick={() => setIsEditorOpen(true)}>
+                        <Pencil className="w-8 h-8 text-white" />
+                      </div>
+                      {editedDataUrl && (
+                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8" onClick={handleClearEdits}>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Limpar edição</span>
+                        </Button>
+                      )}
                     </div>
                   )}
                 </div>
@@ -259,11 +275,38 @@ export default function Home() {
         </div>
       </main>
 
+      <Dialog open={isEditorOpen} onOpenChange={setIsEditorOpen}>
+        <DialogContent className="max-w-4xl w-full h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle>Editar Imagem</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 relative overflow-hidden flex items-center justify-center bg-muted/20">
+            <div className="relative">
+                <img ref={editorImageRef} src={previewUrl || ''} alt="Editor" className="max-w-full max-h-[calc(90vh-140px)] object-contain" />
+                <canvas
+                    ref={canvasRef}
+                    className="absolute top-0 left-0 w-full h-full cursor-crosshair"
+                    onMouseDown={startDrawing}
+                    onMouseMove={draw}
+                    onMouseUp={stopDrawing}
+                    onMouseLeave={stopDrawing}
+                    onTouchStart={startDrawing}
+                    onTouchMove={draw}
+                    onTouchEnd={stopDrawing}
+                />
+            </div>
+          </div>
+          <DialogFooter className="p-4 border-t">
+            <Button variant="outline" onClick={() => setIsEditorOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSaveEdits}><Save className="mr-2 h-4 w-4" /> Salvar Edição</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
       <footer className="p-4 border-t text-center text-sm text-muted-foreground">
         <p>Criado por JOSÉ WELINSON BEZERRA DA SILVA</p>
       </footer>
     </div>
   );
-}
 
     
