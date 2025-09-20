@@ -40,9 +40,17 @@ export default function Home() {
       let assistantResponse = '';
 
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
+      
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
 
-      for await (const chunk of stream) {
-        assistantResponse += chunk.text;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+        const chunk = decoder.decode(value, { stream: true });
+        assistantResponse += chunk;
         setMessages((prev) => {
           const newMessages = [...prev];
           newMessages[newMessages.length - 1].content = assistantResponse;
@@ -55,7 +63,14 @@ export default function Home() {
         role: 'assistant',
         content: "Desculpe, ocorreu um erro ao gerar o código. Por favor, tente novamente.",
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        if (newMessages[newMessages.length -1].role === 'assistant' && newMessages[newMessages.length -1].content === '') {
+          newMessages[newMessages.length-1] = errorMessage;
+          return newMessages;
+        }
+        return [...newMessages, errorMessage]
+      });
     } finally {
       setIsLoading(false);
     }

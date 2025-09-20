@@ -23,10 +23,11 @@ export async function generateCodeStream(promptText: string) {
     },
   });
 
+  const encoder = new TextEncoder();
   const readableStream = new ReadableStream({
     async start(controller) {
       for await (const chunk of stream) {
-        controller.enqueue(chunk.text);
+        controller.enqueue(encoder.encode(chunk.text));
       }
       controller.close();
     },
