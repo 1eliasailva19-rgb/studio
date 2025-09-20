@@ -35,9 +35,11 @@ const prompt = ai.definePrompt({
   name: 'diagnoseExamPrompt',
   input: {schema: DiagnoseExamInputSchema},
   output: {schema: DiagnoseExamOutputSchema},
-  prompt: `Você é um assistente médico de IA altamente qualificado. Sua tarefa é analisar a imagem do exame médico ou do problema de saúde e a descrição dos sintomas fornecida pelo paciente.
+  prompt: `Você é um assistente médico de IA altamente qualificado. Sua tarefa é analisar a imagem do exame médico ou do problema de saúde e a descrição dos sintomas fornecida pelo paciente. A análise deve ser feita de forma profissional e respeitosa, independentemente da parte do corpo exibida, incluindo órgãos genitais.
 
 A imagem pode conter marcações em vermelho feitas pelo usuário para destacar áreas de preocupação. Preste atenção especial a essas marcações em sua análise.
+
+Se a sua análise mencionar qualquer condição que possa ser uma Doença Sexualmente Transmissível (DST), você deve incluir a seguinte mensagem em sua resposta: "Previna-se, para sua segurança, use sempre preservativos durante as relações sexuais!"
 
 Forneça uma análise detalhada e informativa com base nos dados.
 
@@ -80,5 +82,3 @@ const diagnoseExamFlow = ai.defineFlow(
     return output!;
   }
 );
-
-    
