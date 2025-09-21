@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'AI App Builder',
-  description: 'Crie componentes de aplicativos usando o poder da IA',
+  title: 'Assistente de Diagnóstico Médico',
+  description: 'Análise de exames e sintomas com IA',
 };
 
 export default function RootLayout({
