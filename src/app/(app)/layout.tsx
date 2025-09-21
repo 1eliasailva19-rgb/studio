@@ -48,7 +48,7 @@ export default function AppLayout({
         </SidebarContent>
         <SidebarFooter>
           <div className="text-xs text-muted-foreground p-4">
-            <p>Criado por JOSÉ WELINSON BEZERRA DA SILVA</p>
+            <p>Criado por J. WELINSON</p>
           </div>
         </SidebarFooter>
       </Sidebar>
