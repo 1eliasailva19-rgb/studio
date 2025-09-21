@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Loader2, Microscope, AlertTriangle, Upload, Pencil, Trash2, Save, X } from 'lucide-react';
+import { Bot, Loader2, Microscope, AlertTriangle, Upload, Pencil, Trash2, Save, X, FilePlus2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
@@ -176,7 +176,6 @@ export default function Home() {
   };
   
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
-    // Check if the target is not a button to avoid conflict
     if ((e.target as HTMLElement).closest('button')) {
       return;
     }
@@ -193,6 +192,17 @@ export default function Home() {
 
   const handleImageClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleNewAnalysis = () => {
+    setSymptoms('');
+    setExamFile(null);
+    setPreviewUrl(null);
+    setEditedDataUrl(null);
+    setAnalysisResult(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
   };
 
 
@@ -306,11 +316,11 @@ export default function Home() {
               </div>
             )}
             {analysisResult && (
-              <Card className="w-full">
+              <Card className="w-full flex flex-col">
                 <CardHeader>
                   <CardTitle>Resultado da Análise</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 flex-1">
                   <p className="whitespace-pre-wrap">{analysisResult.analysis}</p>
                   <Alert variant="destructive">
                     <AlertTriangle className="h-4 w-4" />
@@ -320,6 +330,12 @@ export default function Home() {
                     </AlertDescription>
                   </Alert>
                 </CardContent>
+                <CardFooter>
+                  <Button onClick={handleNewAnalysis} className="w-full">
+                    <FilePlus2 className="mr-2 h-4 w-4" />
+                    Nova Análise
+                  </Button>
+                </CardFooter>
               </Card>
             )}
             {!isLoading && !analysisResult && (
@@ -366,3 +382,5 @@ export default function Home() {
     </div>
   );
 }
+
+    
