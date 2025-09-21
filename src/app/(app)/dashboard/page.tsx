@@ -10,10 +10,13 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { diagnoseExam, DiagnoseExamOutput } from '@/ai/flows/diagnose-exam-flow';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
 
 export default function DashboardPage() {
   const [symptoms, setSymptoms] = useState('');
   const [examFile, setExamFile] = useState<File | null>(null);
+  const [noPhoto, setNoPhoto] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [editedDataUrl, setEditedDataUrl] = useState<string | null>(null);
   const [analysisResult, setAnalysisResult] = useState<DiagnoseExamOutput | null>(null);
@@ -144,13 +147,25 @@ export default function DashboardPage() {
     }
   };
 
+  const handleNoPhotoChange = (checked: boolean) => {
+    setNoPhoto(checked);
+    if (checked) {
+      setExamFile(null);
+      setPreviewUrl(null);
+      setEditedDataUrl(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!examFile || !symptoms) {
+    if ((!examFile && !noPhoto) || !symptoms) {
       toast({
         variant: "destructive",
         title: "Campos obrigatórios",
-        description: "Por favor, envie uma imagem e descreva seus sintomas.",
+        description: "Por favor, envie uma imagem ou marque a opção de que não possui, e descreva seus sintomas.",
       });
       return;
     }
@@ -159,8 +174,8 @@ export default function DashboardPage() {
     setAnalysisResult(null);
 
     try {
-      const examPhotoDataUri = editedDataUrl || previewUrl!;
-      const result = await diagnoseExam({ examPhotoDataUri, symptoms });
+      const examPhotoDataUri = editedDataUrl || previewUrl;
+      const result = await diagnoseExam({ examPhotoDataUri: examPhotoDataUri || undefined, symptoms });
       setAnalysisResult(result);
     } catch (error) {
       console.error("Erro ao analisar o exame:", error);
@@ -190,7 +205,9 @@ export default function DashboardPage() {
   };
 
   const handleImageClick = () => {
-    fileInputRef.current?.click();
+    if (!noPhoto) {
+      fileInputRef.current?.click();
+    }
   };
 
   const handleNewAnalysis = () => {
@@ -199,6 +216,7 @@ export default function DashboardPage() {
     setPreviewUrl(null);
     setEditedDataUrl(null);
     setAnalysisResult(null);
+    setNoPhoto(false);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -229,59 +247,69 @@ export default function DashboardPage() {
     }
   }, [isEditorOpen]);
 
+  const isSubmitDisabled = isLoading || (!symptoms) || (!noPhoto && !examFile);
+
   return (
     <main className="flex-1 p-4 md:p-6">
       <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
         <Card>
           <CardHeader>
             <CardTitle>Informações do Paciente</CardTitle>
-            <CardDescription>Envie uma foto do seu exame ou problema e descreva os sintomas.</CardDescription>
+            <CardDescription>Envie uma foto do seu exame/problema ou apenas descreva os sintomas.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <label htmlFor="exam-file" className="font-medium">Exame ou Foto do Problema</label>
-                <Input id="exam-file" ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
-                {!previewUrl ? (
-                   <label htmlFor="exam-file" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                          <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
-                          <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Clique para enviar</span> ou arraste e solte</p>
-                          <p className="text-xs text-muted-foreground">PNG, JPG, WEBP (MAX. 4MB)</p>
+                <div className={`transition-opacity ${noPhoto ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                  <Input id="exam-file" ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} disabled={noPhoto} />
+                  {!previewUrl ? (
+                     <label htmlFor="exam-file" className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg ${noPhoto ? 'cursor-not-allowed bg-muted/50' : 'cursor-pointer hover:bg-muted'}`}>
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-8 h-8 mb-4 text-muted-foreground" />
+                            <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Clique para enviar</span> ou arraste e solte</p>
+                            <p className="text-xs text-muted-foreground">PNG, JPG, WEBP (MAX. 4MB)</p>
+                        </div>
+                    </label>
+                  ) : (
+                    <div 
+                      className="mt-4 relative mx-auto w-full max-w-md group"
+                      onMouseDown={handlePressStart}
+                      onMouseUp={handlePressEnd}
+                      onTouchStart={handlePressStart}
+                      onTouchEnd={handlePressEnd}
+                      onClick={handleImageClick}
+                    >
+                      <div className={noPhoto ? 'cursor-not-allowed' : 'cursor-pointer'}>
+                        <img 
+                          src={editedDataUrl || previewUrl} 
+                          alt="Pré-visualização" 
+                          className="rounded-md w-full h-auto"
+                        />
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md pointer-events-none">
+                           <Pencil className="w-8 h-8 text-white" />
+                           <span className="ml-2 text-white font-semibold">Segure para editar / Clique para trocar</span>
+                         </div>
                       </div>
-                  </label>
-                ) : (
-                  <div 
-                    className="mt-4 relative mx-auto w-full max-w-md group"
-                    onMouseDown={handlePressStart}
-                    onMouseUp={handlePressEnd}
-                    onTouchStart={handlePressStart}
-                    onTouchEnd={handlePressEnd}
-                    onClick={handleImageClick}
-                  >
-                    <div className="cursor-pointer">
-                      <img 
-                        src={editedDataUrl || previewUrl} 
-                        alt="Pré-visualização" 
-                        className="rounded-md w-full h-auto"
-                      />
-                       <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md pointer-events-none">
-                         <Pencil className="w-8 h-8 text-white" />
-                         <span className="ml-2 text-white font-semibold">Segure para editar / Clique para trocar</span>
-                       </div>
-                    </div>
-                    <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8" onClick={handleClearImage}>
-                      <X className="h-4 w-4" />
-                      <span className="sr-only">Limpar imagem</span>
-                    </Button>
-                    {editedDataUrl && (
-                      <Button variant="secondary" size="icon" className="absolute top-2 right-12 z-10 h-8 w-8" onClick={handleClearEdits}>
-                        <Trash2 className="h-4 w-4" />
-                        <span className="sr-only">Limpar edição</span>
+                      <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8" onClick={handleClearImage}>
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Limpar imagem</span>
                       </Button>
-                    )}
-                  </div>
-                )}
+                      {editedDataUrl && (
+                        <Button variant="secondary" size="icon" className="absolute top-2 right-12 z-10 h-8 w-8" onClick={handleClearEdits}>
+                          <Trash2 className="h-4 w-4" />
+                          <span className="sr-only">Limpar edição</span>
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="no-photo" checked={noPhoto} onCheckedChange={handleNoPhotoChange} />
+                <Label htmlFor="no-photo" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Não possuo exames ou fotos do problema
+                </Label>
               </div>
               <div className="space-y-2">
                 <label htmlFor="symptoms" className="font-medium">Sintomas</label>
@@ -294,7 +322,7 @@ export default function DashboardPage() {
                   disabled={isLoading}
                 />
               </div>
-              <Button type="submit" disabled={isLoading || !examFile || !symptoms} className="w-full">
+              <Button type="submit" disabled={isSubmitDisabled} className="w-full">
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Bot className="h-5 w-5 mr-2" /> Analisar</>}
               </Button>
             </form>
