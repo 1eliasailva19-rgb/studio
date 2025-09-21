@@ -279,6 +279,7 @@ export default function DashboardPage() {
                       onTouchStart={handlePressStart}
                       onTouchEnd={handlePressEnd}
                       onClick={handleImageClick}
+                      onContextMenu={(e) => e.preventDefault()}
                     >
                       <div className={noPhoto ? 'cursor-not-allowed' : 'cursor-pointer'}>
                         <img 
