@@ -1,0 +1,21 @@
+{
+  "name": "Assistente de Diagnóstico IA",
+  "short_name": "Diagnóstico IA",
+  "description": "Análise de exames e sintomas com Inteligência Artificial.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#151515",
+  "theme_color": "#151515",
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
