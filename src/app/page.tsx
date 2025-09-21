@@ -11,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { diagnoseExam, DiagnoseExamOutput } from '@/ai/flows/diagnose-exam-flow';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 export default function Home() {
   const [symptoms, setSymptoms] = useState('');
@@ -25,9 +24,10 @@ export default function Home() {
   const { toast } = useToast();
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imageRef = useRef<HTMLImageElement>(null);
   const editorImageRef = useRef<HTMLImageElement>(null);
-  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout>();
+
   const getCoordinates = (event: React.MouseEvent | React.TouchEvent, canvas: HTMLCanvasElement) => {
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -129,7 +129,8 @@ export default function Home() {
   };
 
   const handleClearEdits = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent opening the editor
+    e.stopPropagation(); 
+    e.preventDefault();
     setEditedDataUrl(null);
   };
 
@@ -162,6 +163,26 @@ export default function Home() {
       setIsLoading(false);
     }
   };
+  
+  const handlePressStart = () => {
+    longPressTimerRef.current = setTimeout(() => {
+      setIsEditorOpen(true);
+    }, 2000);
+  };
+
+  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+  };
+
+  const handleImageClick = (e: React.MouseEvent) => {
+    const timeSincePress = performance.now() - (longPressTimerRef.current as any || 0);
+    if (timeSincePress < 2000) {
+      fileInputRef.current?.click();
+    }
+  };
+
 
   useEffect(() => {
     if (isEditorOpen && canvasRef.current && editorImageRef.current) {
@@ -205,6 +226,7 @@ export default function Home() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <label htmlFor="exam-file" className="font-medium">Exame ou Foto do Problema</label>
+                  <Input id="exam-file" ref={fileInputRef} type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                   {!previewUrl ? (
                      <label htmlFor="exam-file" className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted">
                         <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -212,20 +234,27 @@ export default function Home() {
                             <p className="mb-2 text-sm text-muted-foreground"><span className="font-semibold">Clique para enviar</span> ou arraste e solte</p>
                             <p className="text-xs text-muted-foreground">PNG, JPG, WEBP (MAX. 4MB)</p>
                         </div>
-                        <Input id="exam-file" type="file" className="hidden" accept="image/*" onChange={handleFileChange} />
                     </label>
                   ) : (
-                    <div className="mt-4 relative mx-auto w-full max-w-md group">
-                      <img 
-                        ref={imageRef} 
-                        src={editedDataUrl || previewUrl} 
-                        alt="Pré-visualização" 
-                        className="rounded-md w-full h-auto cursor-pointer"
-                        onClick={() => setIsEditorOpen(true)}
-                      />
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md" onClick={() => setIsEditorOpen(true)}>
-                        <Pencil className="w-8 h-8 text-white" />
-                      </div>
+                    <div 
+                      className="mt-4 relative mx-auto w-full max-w-md group"
+                      onMouseDown={handlePressStart}
+                      onMouseUp={handlePressEnd}
+                      onTouchStart={handlePressStart}
+                      onTouchEnd={handlePressEnd}
+                      onClick={(e) => e.preventDefault()} // Prevent click from firing immediately
+                    >
+                      <label htmlFor="exam-file" className="cursor-pointer">
+                        <img 
+                          src={editedDataUrl || previewUrl} 
+                          alt="Pré-visualização" 
+                          className="rounded-md w-full h-auto"
+                        />
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                           <Pencil className="w-8 h-8 text-white" />
+                           <span className="ml-2 text-white font-semibold">Segure para editar</span>
+                         </div>
+                      </label>
                       {editedDataUrl && (
                         <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8" onClick={handleClearEdits}>
                           <Trash2 className="h-4 w-4" />
@@ -320,7 +349,6 @@ export default function Home() {
       </footer>
     </div>
   );
-
-    
+}
 
     
