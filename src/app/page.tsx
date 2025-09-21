@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Loader2, Microscope, AlertTriangle, Upload, Pencil, Trash2, Save } from 'lucide-react';
+import { Bot, Loader2, Microscope, AlertTriangle, Upload, Pencil, Trash2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -134,6 +134,17 @@ export default function Home() {
     setEditedDataUrl(null);
   };
 
+  const handleClearImage = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    setExamFile(null);
+    setPreviewUrl(null);
+    setEditedDataUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!examFile || !symptoms) {
@@ -164,23 +175,24 @@ export default function Home() {
     }
   };
   
-  const handlePressStart = () => {
+  const handlePressStart = (e: React.MouseEvent | React.TouchEvent) => {
+    // Check if the target is not a button to avoid conflict
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
     longPressTimerRef.current = setTimeout(() => {
       setIsEditorOpen(true);
     }, 2000);
   };
 
-  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent) => {
+  const handlePressEnd = () => {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
     }
   };
 
-  const handleImageClick = (e: React.MouseEvent) => {
-    const timeSincePress = performance.now() - (longPressTimerRef.current as any || 0);
-    if (timeSincePress < 2000) {
-      fileInputRef.current?.click();
-    }
+  const handleImageClick = () => {
+    fileInputRef.current?.click();
   };
 
 
@@ -242,21 +254,25 @@ export default function Home() {
                       onMouseUp={handlePressEnd}
                       onTouchStart={handlePressStart}
                       onTouchEnd={handlePressEnd}
-                      onClick={(e) => e.preventDefault()} // Prevent click from firing immediately
+                      onClick={handleImageClick}
                     >
-                      <label htmlFor="exam-file" className="cursor-pointer">
+                      <div className="cursor-pointer">
                         <img 
                           src={editedDataUrl || previewUrl} 
                           alt="Pré-visualização" 
                           className="rounded-md w-full h-auto"
                         />
-                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md">
+                         <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-md pointer-events-none">
                            <Pencil className="w-8 h-8 text-white" />
-                           <span className="ml-2 text-white font-semibold">Segure para editar</span>
+                           <span className="ml-2 text-white font-semibold">Segure para editar / Clique para trocar</span>
                          </div>
-                      </label>
+                      </div>
+                      <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8" onClick={handleClearImage}>
+                        <X className="h-4 w-4" />
+                        <span className="sr-only">Limpar imagem</span>
+                      </Button>
                       {editedDataUrl && (
-                        <Button variant="destructive" size="icon" className="absolute top-2 right-2 z-10 h-8 w-8" onClick={handleClearEdits}>
+                        <Button variant="secondary" size="icon" className="absolute top-2 right-12 z-10 h-8 w-8" onClick={handleClearEdits}>
                           <Trash2 className="h-4 w-4" />
                           <span className="sr-only">Limpar edição</span>
                         </Button>
@@ -350,5 +366,3 @@ export default function Home() {
     </div>
   );
 }
-
-    
