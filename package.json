@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "genkit:dev next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "genkit:dev": "genkit-cli dev -f src/ai/dev.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "^1.14.1",
