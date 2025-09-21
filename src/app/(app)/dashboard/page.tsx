@@ -312,7 +312,7 @@ export default function DashboardPage() {
                 </Label>
               </div>
               <div className="space-y-2">
-                <label htmlFor="symptoms" className="font-medium">Sintomas</label>
+                <label htmlFor="symptoms" className="font-medium">Sintomas ou informações sobre</label>
                 <Textarea
                   id="symptoms"
                   placeholder="Ex: Tenho sentido dores de cabeça frequentes e tontura..."
